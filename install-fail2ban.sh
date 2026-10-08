@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Fail2ban installer for Ubuntu 24.04
+# Fail2ban installer for Ubuntu
 # Logs each major step with [+], [!], and [-] prefixes.
 
 log_ok() {
@@ -20,12 +20,16 @@ if [[ $(id -u) -ne 0 ]]; then
   exit 1
 fi
 
+OS_INFO=""
 if [[ -f /etc/os-release ]]; then
   . /etc/os-release
+  OS_INFO="${PRETTY_NAME:-unknown}"
 fi
 
 if [[ "${ID:-}" != "ubuntu" ]]; then
-  log_warn "Обнаружена ОС: ${PRETTY_NAME:-unknown}. Скрипт рассчитан на Ubuntu, но продолжает работу."
+  log_warn "Обнаружена ОС: ${OS_INFO}. Скрипт рассчитан на Ubuntu, но продолжает работу."
+else
+  log_ok "Обнаружена ОС: ${OS_INFO}"
 fi
 
 log_ok "Установка fail2ban..."
@@ -63,4 +67,4 @@ log_ok "Проверка значения bantime для sshd: $bantime_value"
 log_ok "Статус fail2ban для sshd:"
 fail2ban-client status sshd || true
 
-printf '\n\033[32m[+] Fail2ban успешно установлен и настроен на Ubuntu 24.04.\033[0m\n'
+printf '\n\033[32m[+] Fail2ban успешно установлен и настроен на %s.\033[0m\n' "${OS_INFO}"
