@@ -8,6 +8,7 @@
 | [`disable-ssh-password.sh`](#disable-ssh-passwordsh) | отключает вход по паролю в SSH, остаётся только вход по ключу |
 | [`enable-bbr.sh`](#enable-bbrsh) | включает TCP BBR и fq, ускоряет сеть VPN-сервера |
 | [`setup-ufw.sh`](#setup-ufwsh) | настраивает файрвол ufw, сам находит порты SSH, панели и inbound'ов 3x-ui |
+| [`backup-3xui.sh`](#backup-3xuish) | бэкап базы и настроек 3x-ui: ротация, Telegram, cron, восстановление |
 
 ---
 
@@ -243,6 +244,86 @@ bash <(curl -sSL https://raw.githubusercontent.com/igor-chelapin/vps-tools/vps-t
 ```bash
 sudo ufw status verbose
 ```
+
+---
+
+## backup-3xui.sh
+
+Делает бэкап базы и настроек [3x-ui](https://github.com/MHSanaei/3x-ui): хранит последние копии, по желанию отправляет архив в Telegram, ставится в cron и умеет восстанавливать панель из архива.
+
+В 3x-ui есть и своя отправка бэкапа через Telegram-бота панели. Этот скрипт дополняет её: делает копии на самом сервере с ротацией, сохраняет конфиг Xray и файлы, которые вы добавите (например, сертификаты), и умеет восстанавливать одной командой.
+
+### Что попадает в архив
+
+- база `/etc/x-ui/x-ui.db`: консистентная копия через `sqlite3 .backup`, поэтому работающая панель не мешает, а свежие записи не теряются
+- остальные файлы из `/etc/x-ui` (кроме логов)
+- `/etc/default/x-ui` и `/usr/local/x-ui/bin/config.json`
+- всё, что указано через `--include`
+
+Архивы лежат в `/var/backups/3x-ui` (права 700/600), хранятся последние 14 штук.
+
+### Требования
+
+- права root, Ubuntu, 3x-ui с базой SQLite. `sqlite3` скрипт установит сам
+- при PostgreSQL сама база не копируется (скрипт предупредит): делайте `pg_dump` отдельно
+
+### Быстрая установка
+
+Запускать от root:
+
+```bash
+bash <(curl -sSL https://raw.githubusercontent.com/igor-chelapin/vps-tools/vps-tools/backup-3xui.sh)
+```
+
+Бэкап с сертификатами, хранить 30 копий:
+
+```bash
+bash <(curl -sSL https://raw.githubusercontent.com/igor-chelapin/vps-tools/vps-tools/backup-3xui.sh) --include /root/cert --keep 30
+```
+
+### Telegram (по желанию)
+
+Без настройки архив просто остаётся на сервере, а результат пишется в лог `/var/log/vps-tools.log`. Чтобы получать копии в Telegram:
+
+```bash
+sudo ./backup-3xui.sh --setup-telegram
+```
+
+Скрипт попросит токен бота от @BotFather, сам определит ваш chat id (нужно один раз написать боту `/start`) и отправит тестовое сообщение. Токен сохраняется в `/etc/vps-tools/telegram.conf` с правами 600 и в репозиторий не попадает. Telegram принимает файлы до 50 МБ: большие архивы остаются только на сервере.
+
+Отключить отправку: удалите `/etc/vps-tools/telegram.conf` или запускайте с `--no-telegram`.
+
+### Расписание
+
+```bash
+sudo ./backup-3xui.sh --install-cron              # каждый день в 03:15
+sudo ./backup-3xui.sh --install-cron --time 05:30 # другое время
+sudo ./backup-3xui.sh --remove-cron               # убрать
+```
+
+Скрипт копируется в `/usr/local/sbin/vps-tools-backup-3xui`, расписание записывается в `/etc/cron.d/vps-tools-backup`. Опции `--keep`, `--dir` и `--include`, указанные вместе с `--install-cron`, попадут в расписание.
+
+### Восстановление
+
+```bash
+sudo ./backup-3xui.sh --list
+sudo ./backup-3xui.sh --restore /var/backups/3x-ui/3xui-ИМЯ-ДАТА.tar.gz
+```
+
+Перед восстановлением скрипт показывает, какие файлы будут перезаписаны, делает копию текущего состояния (`prerestore-3xui-…`), останавливает `x-ui`, разворачивает архив и запускает панель. Архивы с абсолютными путями или `..` отклоняются.
+
+### Все опции
+
+| Опция | Описание |
+| --- | --- |
+| `--dir DIR` | каталог для архивов |
+| `--keep N` | сколько последних архивов хранить (по умолчанию 14) |
+| `--include PATH` | добавить файл или каталог в архив (можно несколько раз) |
+| `--no-telegram` | не отправлять этот архив |
+| `--setup-telegram` | сохранить токен и chat id |
+| `--install-cron`, `--time HH:MM`, `--remove-cron` | расписание |
+| `--list`, `--restore FILE` | список и восстановление |
+| `--dry-run`, `--quiet`, `--yes` | пробный запуск, тихий режим, без подтверждений |
 
 ---
 
