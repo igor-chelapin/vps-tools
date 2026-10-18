@@ -1,6 +1,6 @@
 # vps-tools
 
-Набор утилит для автоматической настройки Ubuntu VPS. Включает скрипт для установки и настройки Fail2ban, который блокирует SSH-ботов навсегда.
+Набор утилит для автоматической настройки Ubuntu VPS. Это ветка `vps-tools`; на ветке `main` лежит [vpn-key-checker](https://github.com/igor-chelapin/vps-tools) — проверка VPN-ключей через Xray. Включает скрипт для установки и настройки Fail2ban, который блокирует SSH-ботов навсегда.
 
 ## Что делает
 
@@ -13,13 +13,13 @@
 ## Быстрая установка
 
 ```bash
-bash <(curl -sSL https://raw.githubusercontent.com/igor-chelapin/vps-tools/main/install-fail2ban.sh)
+bash <(curl -sSL https://raw.githubusercontent.com/igor-chelapin/vps-tools/vps-tools/install-fail2ban.sh)
 ```
 
 ## Установка вручную
 
 ```bash
-git clone https://github.com/igor-chelapin/vps-tools.git
+git clone -b vps-tools https://github.com/igor-chelapin/vps-tools.git
 cd vps-tools
 chmod +x install-fail2ban.sh
 sudo ./install-fail2ban.sh
